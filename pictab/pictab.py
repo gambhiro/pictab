@@ -63,12 +63,46 @@ def find_available_port_html_resources() -> int:
     _, port = sock.getsockname()
     return port
 
+USAGE = """
+Photos dir must be provided in one of these ways:
+- dir path as the first argument
+- path to a .txt file, which contains one dir path per line
+"""
+
+PHOTO_DIRS = []
+
 if len(sys.argv) >= 2:
     s = sys.argv[1]
-    PHOTOS_DIR = Path(s).expanduser()
+    p = Path(s).expanduser()
+
+    if p.is_dir():
+        PHOTO_DIRS = [p]
+
+    elif s.endswith(".txt"):
+        with open(p, mode='r', encoding='utf-8') as f:
+            for line in f:
+                path = Path(line.strip())
+                if path.exists() and path.is_dir():
+                    PHOTO_DIRS.append(path)
+
+        if len(PHOTO_DIRS) == 0:
+            print(USAGE)
+            sys.exit(2)
+
+    else:
+        print(USAGE)
+        sys.exit(2)
 else:
-    print("First argument must be the path to the photos dir.")
+    print(USAGE)
     sys.exit(2)
+
+PHOTOS = []
+
+for d in PHOTO_DIRS:
+    files = [d.joinpath(file) for file in os.listdir(d) if (file.endswith(".jpg") or file.endswith(".JPG"))]
+    PHOTOS.extend(files)
+
+random.shuffle(PHOTOS)
 
 app = PicTabServer(5130, Path("assets"))
 
@@ -78,10 +112,7 @@ def index():
 
 @app.app.route('/random_photo')
 def random_photo():
-    files = [file for file in os.listdir(PHOTOS_DIR) if (file.endswith(".jpg") or file.endswith(".JPG"))]
-    photo = PHOTOS_DIR.joinpath(random.choice(files))
-
-    return send_file(photo, mimetype='image/jpeg')
+    return send_file(random.choice(PHOTOS), mimetype='image/jpeg')
 
 def main():
     app.start_server()
