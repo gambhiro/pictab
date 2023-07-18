@@ -95,12 +95,17 @@ if len(sys.argv) >= 2:
             sys.exit(2)
 
         STARRED_PATH = p.with_name("starred-photos.txt")
-        with open(STARRED_PATH, mode='r', encoding='utf-8') as f:
-            for line in f:
-                print(line)
-                path = Path(line.strip())
-                if path.exists() and path.is_file():
-                    STARRED_PHOTOS.append(path)
+
+        if not STARRED_PATH.exists():
+            STARRED_PATH.touch()
+
+        else:
+            with open(STARRED_PATH, mode='r', encoding='utf-8') as f:
+                for line in f:
+                    print(line)
+                    path = Path(line.strip())
+                    if path.exists() and path.is_file():
+                        STARRED_PHOTOS.append(path)
 
     else:
         print(USAGE)
