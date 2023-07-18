@@ -23,6 +23,14 @@ async function insertRandomPhoto() {
     // Create a blob from the response
     let imgData = await response.blob();
 
+    let contentDisposition = response.headers.get('Content-Disposition');
+    const filenameIndex = contentDisposition.indexOf('filename=');
+    const filename = contentDisposition.substring(filenameIndex + 9).split(';')[0];
+
+    // Remove first and last characters, which are double quotes
+    // "/home/.../191232.jpg"
+    let imgPath = filename.slice(1, -1);
+
     // Create an object URL for the blob
     let imgURL = URL.createObjectURL(imgData);
 
@@ -38,6 +46,9 @@ async function insertRandomPhoto() {
 
     fadeIn(photoDiv, 50);
     fadeIn(photoBgDiv, 50);
+
+    let photoPathDiv = document.getElementById("photo-path");
+    photoPathDiv.innerHTML = "<p>" + imgPath + "</p>";
 }
 
 function updateTime() {

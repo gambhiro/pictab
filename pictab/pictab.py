@@ -112,7 +112,11 @@ def index():
 
 @app.app.route('/random_photo')
 def random_photo():
-    return send_file(random.choice(PHOTOS), mimetype='image/jpeg')
+    path = random.choice(PHOTOS)
+    return send_file(
+        path_or_file=path,
+        download_name=str(path),
+        mimetype='image/jpeg')
 
 def main():
     app.start_server()
