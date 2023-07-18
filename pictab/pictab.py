@@ -132,7 +132,7 @@ def starred_photos():
 @app.app.route('/get_random_photo')
 def random_photo():
     global CURRENT_PHOTO
-    if CURRENT_PHOTO is None:
+    if CURRENT_PHOTO is None or len(STARRED_PHOTOS) == 0:
         path = random.choice(PHOTOS)
 
     elif CURRENT_PHOTO in STARRED_PHOTOS:

@@ -32,6 +32,8 @@ body {
 
 #photo-list {
   position: fixed;
+  top: 100px;
+  left: 0px;
   padding: 20px;
   background: black;
 }
@@ -40,10 +42,24 @@ body {
   display: none;
 }
 
-#photo-list img {
+#photo-list > a img {
   height: 300px;
   padding: 20px;
   border-radius: 5px;
+}
+
+#photo-list > a > a.close {
+  position: relative;
+  bottom: 285px;
+  right: 65px;
+  font-size: 16px;
+  padding: 10px;
+  border: none;
+  border-radius: 15px;
+}
+
+#photo-list > a > a.close:hover {
+  background: black;
 }
 
 #current-time {
@@ -115,3 +131,13 @@ body {
 .button:active {
   background-color: #3e8e41;
 }
+
+#menu {
+  position: fixed;
+  top: 20px;
+  left: 50px;
+  font-size: 16px;
+  color: white;
+}
+
+#menu a:visited { color: white; }
