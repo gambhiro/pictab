@@ -1,3 +1,5 @@
+let PHOTO = {};
+
 function fadeIn(element, time) {
     var op = 0;  // initial opacity
     var timer = setInterval(function () {
@@ -9,27 +11,36 @@ function fadeIn(element, time) {
     }, time);
 }
 
-async function insertRandomPhoto() {
+async function insertPhoto(show_starred_photo_path = "") {
     // Thanks GPT-4!
 
-    // Fetch image data - the response is a Promise
-    let response = await fetch("http://localhost:5130/random_photo");
+    if (show_starred_photo_path == "") {
+        let randomPhotoResp = await fetch("http://localhost:5130/get_random_photo");
+        PHOTO = await randomPhotoResp.json();
+    } else {
+        PHOTO = {
+            path: show_starred_photo_path,
+            is_starred: true,
+        };
+    }
 
     let oldImg = document.querySelector("#photo img");
     if (oldImg != null) {
         oldImg.remove();
     }
 
+    let photoResp = await fetch('http://localhost:5130/get_photo', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            "path": PHOTO.path,
+        }),
+    })
+
     // Create a blob from the response
-    let imgData = await response.blob();
-
-    let contentDisposition = response.headers.get('Content-Disposition');
-    const filenameIndex = contentDisposition.indexOf('filename=');
-    const filename = contentDisposition.substring(filenameIndex + 9).split(';')[0];
-
-    // Remove first and last characters, which are double quotes
-    // "/home/.../191232.jpg"
-    let imgPath = filename.slice(1, -1);
+    let imgData = await photoResp.blob();
 
     // Create an object URL for the blob
     let imgURL = URL.createObjectURL(imgData);
@@ -48,7 +59,36 @@ async function insertRandomPhoto() {
     fadeIn(photoBgDiv, 50);
 
     let photoPathDiv = document.getElementById("photo-path");
-    photoPathDiv.innerHTML = "<p>" + imgPath + "</p>";
+    photoPathDiv.innerHTML = "<p>" + PHOTO.path + "</p>";
+
+    let starredBtn = document.querySelector("#starred button");
+    if (PHOTO.is_starred) {
+        starredBtn.classList.add("is-starred");
+        starredBtn.textContent = "⭐";
+    } else {
+        starredBtn.classList.remove("is-starred");
+        starredBtn.textContent = "🔘";
+    }
+}
+
+function toggleStarred(el) {
+    if (PHOTO.is_starred) {
+        PHOTO.is_starred = false;
+        el.classList.remove("is-starred");
+        el.textContent = "🔘";
+    } else {
+        PHOTO.is_starred = true;
+        el.classList.add("is-starred");
+        el.textContent = "⭐";
+    }
+
+    fetch('http://localhost:5130/set_starred', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(PHOTO),
+    })
 }
 
 function updateTime() {
@@ -66,15 +106,18 @@ function updateTime() {
 }
 
 document.addEventListener("DOMContentLoaded", function(event) {
-    insertRandomPhoto();
+    if (SHOW_STARRED_PHOTO_PATH != "") {
+        insertPhoto(SHOW_STARRED_PHOTO_PATH);
+    } else {
+        insertPhoto();
+    }
+
     updateTime();
     setInterval(updateTime, 1000);
 
-    const new_photo = document.querySelector("#new-photo button");
+    const newPhotoBtn = document.querySelector("#new-photo button");
 
-    new_photo.addEventListener("click", (event) => {
-        insertRandomPhoto();
+    newPhotoBtn.addEventListener("click", (event) => {
+        insertPhoto();
     });
-
-
 });

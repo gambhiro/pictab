@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+from typing import Optional
 from pathlib import Path
 import socket, os, sys, threading
 import random
 
-from flask import Flask, send_file
+from flask import Flask, request, send_file, jsonify, render_template
 
 class PicTabServer:
     def __init__(self, port: int, resources_base_dir: Path):
@@ -70,6 +71,10 @@ Photos dir must be provided in one of these ways:
 """
 
 PHOTO_DIRS = []
+PHOTOS = []
+STARRED_PHOTOS = []
+STARRED_PATH: Optional[Path] = None
+CURRENT_PHOTO: Optional[Path] = None
 
 if len(sys.argv) >= 2:
     s = sys.argv[1]
@@ -89,14 +94,20 @@ if len(sys.argv) >= 2:
             print(USAGE)
             sys.exit(2)
 
+        STARRED_PATH = p.with_name("starred-photos.txt")
+        with open(STARRED_PATH, mode='r', encoding='utf-8') as f:
+            for line in f:
+                print(line)
+                path = Path(line.strip())
+                if path.exists() and path.is_file():
+                    STARRED_PHOTOS.append(path)
+
     else:
         print(USAGE)
         sys.exit(2)
 else:
     print(USAGE)
     sys.exit(2)
-
-PHOTOS = []
 
 for d in PHOTO_DIRS:
     files = [d.joinpath(file) for file in os.listdir(d) if (file.endswith(".jpg") or file.endswith(".JPG"))]
@@ -108,15 +119,82 @@ app = PicTabServer(5130, Path("assets"))
 
 @app.app.route('/')
 def index():
-    return send_file(app.resources_base_dir.joinpath("index.html"), mimetype='text/html')
+    starred_photo_path = request.args.get('starred_photo_path')
+    if starred_photo_path is None:
+        return render_template('index.html')
+    else:
+        return render_template('index.html', show_starred_photo_path = starred_photo_path)
 
-@app.app.route('/random_photo')
+@app.app.route('/starred_photos')
+def starred_photos():
+    return send_file(app.resources_base_dir.joinpath("starred_photos.html"), mimetype='text/html')
+
+@app.app.route('/get_random_photo')
 def random_photo():
-    path = random.choice(PHOTOS)
-    return send_file(
-        path_or_file=path,
-        download_name=str(path),
-        mimetype='image/jpeg')
+    global CURRENT_PHOTO
+    if CURRENT_PHOTO is None:
+        path = random.choice(PHOTOS)
+
+    elif CURRENT_PHOTO in STARRED_PHOTOS:
+        not_starred = [p for p in PHOTOS if p not in STARRED_PHOTOS]
+        path = random.choice(not_starred)
+
+    else:
+        path = random.choice(STARRED_PHOTOS)
+
+    CURRENT_PHOTO = path
+
+    resp = {
+        'path': str(path),
+        'is_starred': (path in STARRED_PHOTOS),
+    }
+
+    return jsonify(resp)
+
+@app.app.route('/get_starred_photos')
+def get_starred_photos():
+    a = [str(p) for p in STARRED_PHOTOS]
+    return jsonify(a)
+
+@app.app.route('/get_photo', methods=['POST'])
+def get_photo():
+    data = request.get_json()
+    if 'path' not in data:
+        return "Missing 'path' parameter in request data.", 400
+
+    path = Path(data['path'])
+
+    if not path.is_file():
+        return f"Path does not exist: {path}", 404
+
+    return send_file(path_or_file=path, mimetype='image/jpeg')
+
+@app.app.route('/set_starred', methods=['POST'])
+def set_starred():
+    data = request.get_json()
+    if 'path' not in data:
+        return "Missing 'path' parameter in request data.", 400
+
+    path = Path(data['path'])
+
+    if not path.is_file():
+        return f"Path does not exist: {path}", 404
+
+    set_is_starred = data['is_starred'];
+    if set_is_starred:
+        if path not in STARRED_PHOTOS:
+            STARRED_PHOTOS.append(path)
+
+    else:
+        if path in STARRED_PHOTOS:
+            STARRED_PHOTOS.remove(path)
+
+    if STARRED_PATH is not None:
+        with open(STARRED_PATH, mode='w', encoding='utf-8') as f:
+            text = "\n".join([str(p) for p in STARRED_PHOTOS])
+            f.write(text)
+
+    return "OK", 200
 
 def main():
     app.start_server()
